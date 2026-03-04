@@ -4,6 +4,7 @@ package android
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -21,6 +22,7 @@ import (
 	"github.com/netbirdio/netbird/client/internal/profilemanager"
 	"github.com/netbirdio/netbird/client/internal/routemanager"
 	"github.com/netbirdio/netbird/client/internal/stdnet"
+	"github.com/netbirdio/netbird/client/internal/v2ray"
 	"github.com/netbirdio/netbird/client/net"
 	"github.com/netbirdio/netbird/client/system"
 	"github.com/netbirdio/netbird/formatter"
@@ -69,6 +71,12 @@ type Client struct {
 	networkChangeListener listener.NetworkChangeListener
 
 	connectClient *internal.ConnectClient
+
+	// Connection management
+	connectionMutex   sync.Mutex
+	currentConnection internal.ConnectionType
+	v2rayEngine       *v2ray.Engine
+	v2rayConfigPath   string
 }
 
 // NewClient instantiate a new Client
@@ -89,6 +97,10 @@ func NewClient(androidSDKVersion int, deviceName string, uiVersion string, tunAd
 
 // Run start the internal client. It is a blocker function
 func (c *Client) Run(platformFiles PlatformFiles, urlOpener URLOpener, isAndroidTV bool, dns *DNSList, dnsReadyListener DnsReadyListener, envList *EnvList) error {
+	c.connectionMutex.Lock()
+	c.currentConnection = internal.ConnectionTypeNetBird
+	c.connectionMutex.Unlock()
+
 	exportEnvList(envList)
 
 	cfgFile := platformFiles.ConfigurationFilePath()
@@ -131,6 +143,10 @@ func (c *Client) Run(platformFiles PlatformFiles, urlOpener URLOpener, isAndroid
 // RunWithoutLogin we apply this type of run function when the backed has been started without UI (i.e. after reboot).
 // In this case make no sense handle registration steps.
 func (c *Client) RunWithoutLogin(platformFiles PlatformFiles, dns *DNSList, dnsReadyListener DnsReadyListener, envList *EnvList) error {
+	c.connectionMutex.Lock()
+	c.currentConnection = internal.ConnectionTypeNetBird
+	c.connectionMutex.Unlock()
+
 	exportEnvList(envList)
 
 	cfgFile := platformFiles.ConfigurationFilePath()
@@ -367,4 +383,149 @@ func exportEnvList(list *EnvList) {
 			log.Errorf("could not set env variable %s: %v", k, err)
 		}
 	}
+}
+
+// ConnectNetBird starts NetBird connection (automatically disconnects V2Ray if running)
+// Note: This method only switches the connection type. You must call Run() or RunWithoutLogin()
+// to actually establish the NetBird connection.
+func (c *Client) ConnectNetBird() error {
+	c.connectionMutex.Lock()
+	defer c.connectionMutex.Unlock()
+
+	if c.currentConnection == internal.ConnectionTypeNetBird {
+		log.Info("NetBird is already connected")
+		return nil
+	}
+
+	if c.currentConnection == internal.ConnectionTypeV2Ray {
+		log.Info("Disconnecting V2Ray before connecting NetBird")
+		if err := c.disconnectV2RayInternal(); err != nil {
+			return fmt.Errorf("failed to disconnect V2Ray: %w", err)
+		}
+	}
+
+	c.currentConnection = internal.ConnectionTypeNetBird
+	log.Info("NetBird connection type set. Call Run() to establish connection.")
+	return nil
+}
+
+// ConnectV2Ray starts V2Ray connection (automatically disconnects NetBird if running)
+func (c *Client) ConnectV2Ray(configPath string) error {
+	c.connectionMutex.Lock()
+	defer c.connectionMutex.Unlock()
+
+	if c.currentConnection == internal.ConnectionTypeV2Ray {
+		log.Info("V2Ray is already connected")
+		return nil
+	}
+
+	if c.currentConnection == internal.ConnectionTypeNetBird {
+		log.Info("Disconnecting NetBird before connecting V2Ray")
+		if err := c.disconnectNetBirdInternal(); err != nil {
+			return fmt.Errorf("failed to disconnect NetBird: %w", err)
+		}
+	}
+
+	c.v2rayConfigPath = configPath
+	return c.connectV2RayInternal()
+}
+
+// Disconnect disconnects the current active connection
+func (c *Client) Disconnect() error {
+	c.connectionMutex.Lock()
+	defer c.connectionMutex.Unlock()
+
+	switch c.currentConnection {
+	case internal.ConnectionTypeNetBird:
+		return c.disconnectNetBirdInternal()
+	case internal.ConnectionTypeV2Ray:
+		return c.disconnectV2RayInternal()
+	case internal.ConnectionTypeNone:
+		log.Info("No active connection to disconnect")
+		return nil
+	default:
+		return fmt.Errorf("unknown connection type: %v", c.currentConnection)
+	}
+}
+
+// GetConnectionStatus returns the current connection status
+func (c *Client) GetConnectionStatus() string {
+	c.connectionMutex.Lock()
+	defer c.connectionMutex.Unlock()
+
+	status := &internal.ConnectionStatus{
+		Type:    c.currentConnection.String(),
+		Details: make(map[string]interface{}),
+	}
+
+	switch c.currentConnection {
+	case internal.ConnectionTypeNetBird:
+		status.Connected = c.connectClient != nil
+		if status.Connected {
+			fullStatus := c.recorder.GetFullStatus()
+			status.Details["peers"] = len(fullStatus.Peers)
+			status.Details["fqdn"] = fullStatus.LocalPeerState.FQDN
+			status.Details["ip"] = fullStatus.LocalPeerState.IP
+		}
+	case internal.ConnectionTypeV2Ray:
+		if c.v2rayEngine != nil {
+			engineStatus := c.v2rayEngine.GetStatus()
+			status.Connected = engineStatus == v2ray.StatusRunning
+			statusInfo := c.v2rayEngine.GetStatusInfo()
+			for k, v := range statusInfo {
+				status.Details[k] = v
+			}
+		}
+	}
+
+	jsonData, _ := json.Marshal(status)
+	return string(jsonData)
+}
+
+// disconnectNetBirdInternal disconnects NetBird (internal, no lock)
+func (c *Client) disconnectNetBirdInternal() error {
+	// Use the existing Stop() method for graceful shutdown
+	c.Stop()
+
+	c.connectClient = nil
+	c.currentConnection = internal.ConnectionTypeNone
+	log.Info("NetBird disconnected")
+	return nil
+}
+
+// connectV2RayInternal connects V2Ray (internal, no lock)
+func (c *Client) connectV2RayInternal() error {
+	if c.v2rayConfigPath == "" {
+		return fmt.Errorf("V2Ray config path not set")
+	}
+
+	if _, err := os.Stat(c.v2rayConfigPath); os.IsNotExist(err) {
+		return fmt.Errorf("V2Ray config file not found: %s", c.v2rayConfigPath)
+	}
+
+	c.v2rayEngine = v2ray.NewEngineWithMode(c.v2rayConfigPath, v2ray.ModeProxy)
+
+	ctx := context.Background()
+	if err := c.v2rayEngine.Start(ctx); err != nil {
+		c.v2rayEngine = nil
+		return fmt.Errorf("failed to start V2Ray: %w", err)
+	}
+
+	c.currentConnection = internal.ConnectionTypeV2Ray
+	log.Info("V2Ray connected successfully")
+	return nil
+}
+
+// disconnectV2RayInternal disconnects V2Ray (internal, no lock)
+func (c *Client) disconnectV2RayInternal() error {
+	if c.v2rayEngine != nil {
+		if err := c.v2rayEngine.Stop(); err != nil {
+			log.Warnf("Error stopping V2Ray: %v", err)
+		}
+		c.v2rayEngine = nil
+	}
+
+	c.currentConnection = internal.ConnectionTypeNone
+	log.Info("V2Ray disconnected")
+	return nil
 }
