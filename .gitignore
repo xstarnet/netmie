@@ -33,3 +33,9 @@ infrastructure_files/setup-*.env
 vendor/
 /netbird
 client/netbird-electron/
+
+# Netmie binaries
+/netmie
+
+# V2Ray data files
+*.dat

@@ -106,6 +106,19 @@ service DaemonService {
 
   // ExposeService exposes a local port via the NetBird reverse proxy
   rpc ExposeService(ExposeServiceRequest) returns (stream ExposeServiceEvent) {}
+
+  // V2Ray management RPCs
+  // VUp starts V2Ray connection
+  rpc VUp(VUpRequest) returns (VUpResponse) {}
+
+  // VDown stops V2Ray connection
+  rpc VDown(VDownRequest) returns (VDownResponse) {}
+
+  // VStatus returns V2Ray connection status
+  rpc VStatus(VStatusRequest) returns (VStatusResponse) {}
+
+  // VConfig updates V2Ray configuration
+  rpc VConfig(VConfigRequest) returns (VConfigResponse) {}
 }
 
 
@@ -832,4 +845,37 @@ message ExposeServiceReady {
   string service_name = 1;
   string service_url = 2;
   string domain = 3;
+}
+
+// V2Ray messages
+message VUpRequest {}
+
+message VUpResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message VDownRequest {}
+
+message VDownResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message VStatusRequest {}
+
+message VStatusResponse {
+  string status = 1;
+  string interface = 2;
+  string ip = 3;
+  string configVersion = 4;
+}
+
+message VConfigRequest {
+  string configPath = 1;
+}
+
+message VConfigResponse {
+  bool success = 1;
+  string message = 2;
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/netbirdio/netbird/client/internal"
 	"github.com/netbirdio/netbird/client/internal/peer"
+	"github.com/netbirdio/netbird/client/internal/v2ray"
 	"github.com/netbirdio/netbird/client/proto"
 	"github.com/netbirdio/netbird/version"
 )
@@ -90,6 +92,10 @@ type Server struct {
 	sleepHandler *sleephandler.SleepHandler
 
 	jwtCache *jwtCache
+
+	// V2Ray engine
+	v2rayEngine *v2ray.Engine
+	v2rayMutex  sync.Mutex
 }
 
 type oauthAuthFlow struct {
@@ -1716,3 +1722,200 @@ func sendTerminalNotification() error {
 
 	return wallCmd.Wait()
 }
+
+// VUp starts V2Ray connection
+func (s *Server) VUp(ctx context.Context, req *proto.VUpRequest) (*proto.VUpResponse, error) {
+	s.v2rayMutex.Lock()
+	defer s.v2rayMutex.Unlock()
+
+	// Check if already running
+	if s.v2rayEngine != nil && s.v2rayEngine.GetStatus() == v2ray.StatusRunning {
+		return &proto.VUpResponse{
+			Success: false,
+			Message: "V2Ray is already running",
+		}, nil
+	}
+
+	// Get V2Ray config path
+	configPath := v2ray.DefaultConfigPath()
+
+	// Create V2Ray engine
+	engine := v2ray.NewEngine(configPath)
+
+	// Start V2Ray
+	if err := engine.Start(ctx); err != nil {
+		log.Errorf("Failed to start V2Ray: %v", err)
+		return &proto.VUpResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to start V2Ray: %v", err),
+		}, nil
+	}
+
+	s.v2rayEngine = engine
+	log.Info("V2Ray started successfully")
+
+	return &proto.VUpResponse{
+		Success: true,
+		Message: "V2Ray started successfully",
+	}, nil
+}
+
+// VDown stops V2Ray connection
+func (s *Server) VDown(ctx context.Context, req *proto.VDownRequest) (*proto.VDownResponse, error) {
+	s.v2rayMutex.Lock()
+	defer s.v2rayMutex.Unlock()
+
+	// Check if running
+	if s.v2rayEngine == nil {
+		return &proto.VDownResponse{
+			Success: false,
+			Message: "V2Ray is not running",
+		}, nil
+	}
+
+	// Stop V2Ray
+	if err := s.v2rayEngine.Stop(); err != nil {
+		log.Errorf("Failed to stop V2Ray: %v", err)
+		return &proto.VDownResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to stop V2Ray: %v", err),
+		}, nil
+	}
+
+	s.v2rayEngine = nil
+	log.Info("V2Ray stopped successfully")
+
+	return &proto.VDownResponse{
+		Success: true,
+		Message: "V2Ray stopped successfully",
+	}, nil
+}
+
+// VStatus returns V2Ray connection status
+func (s *Server) VStatus(ctx context.Context, req *proto.VStatusRequest) (*proto.VStatusResponse, error) {
+	s.v2rayMutex.Lock()
+	defer s.v2rayMutex.Unlock()
+
+	// Check if engine exists
+	if s.v2rayEngine == nil {
+		return &proto.VStatusResponse{
+			Status: "stopped",
+		}, nil
+	}
+
+	// Get status info
+	statusInfo := s.v2rayEngine.GetStatusInfo()
+
+	status := "Unknown"
+	if s, ok := statusInfo["status"].(string); ok {
+		status = s
+	}
+
+	iface := ""
+	if i, ok := statusInfo["interface"].(string); ok {
+		iface = i
+	}
+
+	ip := ""
+	if ipVal, ok := statusInfo["ip"].(string); ok {
+		ip = ipVal
+	}
+
+	configVersion := ""
+	if cv, ok := statusInfo["config_version"].(string); ok {
+		configVersion = cv
+	}
+
+	return &proto.VStatusResponse{
+		Status:        status,
+		Interface:     iface,
+		Ip:            ip,
+		ConfigVersion: configVersion,
+	}, nil
+}
+
+// VConfig updates V2Ray configuration
+func (s *Server) VConfig(ctx context.Context, req *proto.VConfigRequest) (*proto.VConfigResponse, error) {
+	s.v2rayMutex.Lock()
+	defer s.v2rayMutex.Unlock()
+
+	// Validate config path
+	if req.ConfigPath == "" {
+		return &proto.VConfigResponse{
+			Success: false,
+			Message: "config path is empty",
+		}, nil
+	}
+
+	// Check if config file exists
+	if _, err := os.Stat(req.ConfigPath); os.IsNotExist(err) {
+		return &proto.VConfigResponse{
+			Success: false,
+			Message: fmt.Sprintf("config file not found: %s", req.ConfigPath),
+		}, nil
+	}
+
+	// Read config file
+	configData, err := os.ReadFile(req.ConfigPath)
+	if err != nil {
+		return &proto.VConfigResponse{
+			Success: false,
+			Message: fmt.Sprintf("failed to read config file: %v", err),
+		}, nil
+	}
+
+	// Validate JSON format
+	var jsonCheck map[string]interface{}
+	if err := json.Unmarshal(configData, &jsonCheck); err != nil {
+		return &proto.VConfigResponse{
+			Success: false,
+			Message: fmt.Sprintf("invalid JSON format: %v", err),
+		}, nil
+	}
+
+	// Check if V2Ray is running
+	wasRunning := s.v2rayEngine != nil && s.v2rayEngine.GetStatus() == v2ray.StatusRunning
+
+	// Stop V2Ray if running
+	if wasRunning {
+		log.Info("Stopping V2Ray to update configuration...")
+		if err := s.v2rayEngine.Stop(); err != nil {
+			return &proto.VConfigResponse{
+				Success: false,
+				Message: fmt.Sprintf("failed to stop V2Ray: %v", err),
+			}, nil
+		}
+		s.v2rayEngine = nil
+	}
+
+	// Write config to daemon's config location
+	targetPath := v2ray.DefaultConfigPath()
+	if err := os.WriteFile(targetPath, configData, 0644); err != nil {
+		return &proto.VConfigResponse{
+			Success: false,
+			Message: fmt.Sprintf("failed to write config file: %v", err),
+		}, nil
+	}
+
+	log.Infof("V2Ray configuration updated: %s", targetPath)
+
+	// Restart V2Ray if it was running
+	if wasRunning {
+		log.Info("Restarting V2Ray with new configuration...")
+		engine := v2ray.NewEngine(targetPath)
+		if err := engine.Start(ctx); err != nil {
+			return &proto.VConfigResponse{
+				Success: false,
+				Message: fmt.Sprintf("failed to start V2Ray with new config: %v", err),
+			}, nil
+		}
+		s.v2rayEngine = engine
+		log.Info("V2Ray restarted successfully with new configuration")
+	}
+
+	return &proto.VConfigResponse{
+		Success: true,
+		Message: "Configuration updated successfully",
+	}, nil
+}
+

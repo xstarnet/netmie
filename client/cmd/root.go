@@ -77,7 +77,7 @@ var (
 	updateSettingsDisabled  bool
 
 	rootCmd = &cobra.Command{
-		Use:          "netbird",
+		Use:          "netmie",
 		Short:        "",
 		Long:         "",
 		SilenceUsage: true,

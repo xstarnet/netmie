@@ -1,148 +1,278 @@
+# Netmie
 
-<div align="center">
-<br/>
-  <br/>
-<p align="center">
-  <img width="234" src="docs/media/logo-full.png"/>
-</p>
-  <p>
-   <a href="https://img.shields.io/badge/license-BSD--3-blue)">
-       <img src="https://sonarcloud.io/api/project_badges/measure?project=netbirdio_netbird&metric=alert_status" />
-     </a> 
-     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
-       <img src="https://img.shields.io/badge/license-BSD--3-blue" />
-     </a> 
-    <br>
-    <a href="https://docs.netbird.io/slack-url">
-        <img src="https://img.shields.io/badge/slack-@netbird-red.svg?logo=slack"/>
-     </a>
-    <a href="https://forum.netbird.io">
-        <img src="https://img.shields.io/badge/community forum-@netbird-red.svg?logo=discourse"/>
-     </a>  
-     <br>
-    <a href="https://gurubase.io/g/netbird">
-        <img src="https://img.shields.io/badge/Gurubase-Ask%20NetBird%20Guru-006BFF"/>
-     </a>    
-  </p>
-</div>
+Netmie 是基于 NetBird 的 P2P VPN 解决方案，集成了 V2Ray 代理功能。
 
+## 功能特性
 
-<p align="center">
-<strong>
-  Start using NetBird at <a href="https://netbird.io/pricing">netbird.io</a>
-  <br/>
-  See <a href="https://netbird.io/docs/">Documentation</a>
-  <br/>
-   Join our <a href="https://docs.netbird.io/slack-url">Slack channel</a> or our <a href="https://forum.netbird.io">Community forum</a>
-  <br/>
- 
-</strong>
-<br>
-<strong>
-  🚀 <a href="https://careers.netbird.io">We are hiring! Join us at careers.netbird.io</a>
-</strong>
-<br>
-<br>
-<a href="https://registry.terraform.io/providers/netbirdio/netbird/latest">
-    New: NetBird terraform provider
-  </a> 
-</p>
+- **NetBird P2P VPN**: 基于 WireGuard 的点对点 VPN 连接
+- **V2Ray 代理**: 支持 VMess/VLESS 等协议的代理功能
+- **双模式共存**: PC 端支持 NetBird 和 V2Ray 同时运行
+- **统一管理**: 通过 daemon 统一管理两种连接方式
 
-<br>
+## 快速开始
 
-**NetBird combines a configuration-free peer-to-peer private network and a centralized access control system in a single platform, making it easy to create secure private networks for your organization or home.**
+### 开发环境安装
 
-**Connect.** NetBird creates a WireGuard-based overlay network that automatically connects your machines over an encrypted tunnel, leaving behind the hassle of opening ports, complex firewall rules, VPN gateways, and so forth.
-
-**Secure.** NetBird enables secure remote access by applying granular access policies while allowing you to manage them intuitively from a single place. Works universally on any infrastructure.
-
-### Open Source Network Security in a Single Platform
-
-https://github.com/user-attachments/assets/10cec749-bb56-4ab3-97af-4e38850108d2
-
-### Self-Host NetBird (Video)
-[![Watch the video](https://img.youtube.com/vi/bZAgpT6nzaQ/0.jpg)](https://youtu.be/bZAgpT6nzaQ)
-
-### Key features
-
-| Connectivity | Management | Security | Automation| Platforms |
-|----|----|----|----|----|
-| <ul><li>- \[x] Kernel WireGuard</ul></li> | <ul><li>- \[x] [Admin Web UI](https://github.com/netbirdio/dashboard)</ul></li> | <ul><li>- \[x] [SSO & MFA support](https://docs.netbird.io/how-to/installation#running-net-bird-with-sso-login)</ul></li> | <ul><li>- \[x] [Public API](https://docs.netbird.io/api)</ul></li> | <ul><li>- \[x] Linux</ul></li> |
-| <ul><li>- \[x] Peer-to-peer connections</ul></li> | <ul><li>- \[x] Auto peer discovery and configuration</ui></li> | <ul><li>- \[x] [Access control - groups & rules](https://docs.netbird.io/how-to/manage-network-access)</ui></li> | <ul><li>- \[x] [Setup keys for bulk network provisioning](https://docs.netbird.io/how-to/register-machines-using-setup-keys)</ui></li> | <ul><li>- \[x] Mac</ui></li> |
-| <ul><li>- \[x] Connection relay fallback</ui></li> | <ul><li>- \[x] [IdP integrations](https://docs.netbird.io/selfhosted/identity-providers)</ui></li> | <ul><li>- \[x] [Activity logging](https://docs.netbird.io/how-to/audit-events-logging)</ui></li> | <ul><li>- \[x] [Self-hosting quickstart script](https://docs.netbird.io/selfhosted/selfhosted-quickstart)</ui></li> | <ul><li>- \[x] Windows</ui></li> |
-| <ul><li>- \[x] [Routes to external networks](https://docs.netbird.io/how-to/routing-traffic-to-private-networks)</ui></li> | <ul><li>- \[x] [Private DNS](https://docs.netbird.io/how-to/manage-dns-in-your-network)</ui></li> | <ul><li>- \[x] [Device posture checks](https://docs.netbird.io/how-to/manage-posture-checks)</ui></li> | <ul><li>- \[x] IdP groups sync with JWT</ui></li> | <ul><li>- \[x] Android</ui></li> |
-| <ul><li>- \[x] NAT traversal with BPF</ui></li> | <ul><li>- \[x] [Multiuser support](https://docs.netbird.io/how-to/add-users-to-your-network)</ui></li> | <ul><li>- \[x] Peer-to-peer encryption</ui></li> || <ul><li>- \[x] iOS</ui></li> |
-||| <ul><li>- \[x] [Quantum-resistance with Rosenpass](https://netbird.io/knowledge-hub/the-first-quantum-resistant-mesh-vpn)</ui></li> || <ul><li>- \[x] OpenWRT</ui></li> |
-||| <ul><li>- \[x] [Periodic re-authentication](https://docs.netbird.io/how-to/enforce-periodic-user-authentication)</ui></li> || <ul><li>- \[x] [Serverless](https://docs.netbird.io/how-to/netbird-on-faas)</ui></li> |
-||||| <ul><li>- \[x] Docker</ui></li> |
-
-### Quickstart with NetBird Cloud
-
-- Download and install NetBird at [https://app.netbird.io/install](https://app.netbird.io/install)
-- Follow the steps to sign-up with Google, Microsoft, GitHub or your email address.
-- Check NetBird [admin UI](https://app.netbird.io/).
-- Add more machines.
-
-### Quickstart with self-hosted NetBird
-
-> This is the quickest way to try self-hosted NetBird. It should take around 5 minutes to get started if you already have a public domain and a VM.
-Follow the [Advanced guide with a custom identity provider](https://docs.netbird.io/selfhosted/selfhosted-guide#advanced-guide-with-a-custom-identity-provider) for installations with different IDPs.
-
-**Infrastructure requirements:**
-- A Linux VM with at least **1CPU** and **2GB** of memory.
-- The VM should be publicly accessible on TCP ports **80** and **443** and UDP port: **3478**.
-- **Public domain** name pointing to the VM.
-
-**Software requirements:**
-- Docker installed on the VM with the docker-compose plugin ([Docker installation guide](https://docs.docker.com/engine/install/)) or docker with docker-compose in version 2 or higher.
-- [jq](https://jqlang.github.io/jq/) installed. In most distributions
-  Usually available in the official repositories and can be installed with `sudo apt install jq` or `sudo yum install jq`
-- [curl](https://curl.se/) installed.
-  Usually available in the official repositories and can be installed with `sudo apt install curl` or `sudo yum install curl`
-
-**Steps**
-- Download and run the installation script:
 ```bash
-export NETBIRD_DOMAIN=netbird.example.com; curl -fsSL https://github.com/netbirdio/netbird/releases/latest/download/getting-started.sh | bash
+# 构建并安装
+./dev-install.sh
+
+# 或手动安装
+go build -o ./netmie ./client
+sudo cp ./netmie /usr/local/bin/
+sudo netmie service install
+sudo netmie service start
 ```
-- Once finished, you can manage the resources via `docker-compose`
 
-### A bit on NetBird internals
--  Every machine in the network runs [NetBird Agent (or Client)](client/) that manages WireGuard.
--  Every agent connects to [Management Service](management/) that holds network state, manages peer IPs, and distributes network updates to agents (peers).
--  NetBird agent uses WebRTC ICE implemented in [pion/ice library](https://github.com/pion/ice) to discover connection candidates when establishing a peer-to-peer connection between machines.
--  Connection candidates are discovered with the help of [STUN](https://en.wikipedia.org/wiki/STUN) servers.
--  Agents negotiate a connection through [Signal Service](signal/) passing p2p encrypted messages with candidates.
--  Sometimes the NAT traversal is unsuccessful due to strict NATs (e.g. mobile carrier-grade NAT) and a p2p connection isn't possible. When this occurs the system falls back to a relay server called [TURN](https://en.wikipedia.org/wiki/Traversal_Using_Relays_around_NAT), and a secure WireGuard tunnel is established via the TURN server. 
- 
-[Coturn](https://github.com/coturn/coturn) is the one that has been successfully used for STUN and TURN in NetBird setups.
+### NetBird 功能
 
-<p float="left" align="middle">
-  <img src="https://docs.netbird.io/docs-static/img/about-netbird/high-level-dia.png" width="700"/>
-</p>
+```bash
+# 连接到 NetBird 网络
+netmie up
 
-See a complete [architecture overview](https://docs.netbird.io/about-netbird/how-netbird-works#architecture) for details.
+# 查看连接状态
+netmie status
 
-### Community projects
--  [NetBird installer script](https://github.com/physk/netbird-installer)
--  [NetBird ansible collection by Dominion Solutions](https://galaxy.ansible.com/ui/repo/published/dominion_solutions/netbird/)
+# 断开连接
+netmie down
 
-**Note**: The `main` branch may be in an *unstable or even broken state* during development.
-For stable versions, see [releases](https://github.com/netbirdio/netbird/releases).
+# 查看日志
+netmie debug log
+```
 
-### Support acknowledgement
+### V2Ray 功能
 
-In November 2022, NetBird joined the [StartUpSecure program](https://www.forschung-it-sicherheit-kommunikationssysteme.de/foerderung/bekanntmachungen/startup-secure) sponsored by The Federal Ministry of Education and Research of The Federal Republic of Germany. Together with [CISPA Helmholtz Center for Information Security](https://cispa.de/en) NetBird brings the security best practices and simplicity to private networking.
+```bash
+# 1. 配置 V2Ray（首次使用或更新配置时）
+netmie vconfig /path/to/v2ray-config.json
 
-![CISPA_Logo_BLACK_EN_RZ_RGB (1)](https://user-images.githubusercontent.com/700848/203091324-c6d311a0-22b5-4b05-a288-91cbc6cdcc46.png)
+# 2. 启动 V2Ray 代理
+netmie vup
 
-### Testimonials
-We use open-source technologies like [WireGuard®](https://www.wireguard.com/), [Pion ICE (WebRTC)](https://github.com/pion/ice), [Coturn](https://github.com/coturn/coturn), and [Rosenpass](https://rosenpass.eu). We very much appreciate the work these guys are doing and we'd greatly appreciate if you could support them in any way (e.g., by giving a star or a contribution).
+# 3. 查看 V2Ray 状态
+netmie vstatus
 
-### Legal
-This repository is licensed under BSD-3-Clause license that applies to all parts of the repository except for the directories management/, signal/ and relay/.
-Those directories are licensed under the GNU Affero General Public License version 3.0 (AGPLv3). See the respective LICENSE files inside each directory.
+# 4. 停止 V2Ray 代理
+netmie vdown
+```
 
-_WireGuard_ and the _WireGuard_ logo are [registered trademarks](https://www.wireguard.com/trademark-policy/) of Jason A. Donenfeld.
- 
+### V2Ray 配置示例
 
+```json
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "udp": true
+      }
+    },
+    {
+      "port": 10809,
+      "protocol": "http"
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vmess",
+      "settings": {
+        "vnext": [
+          {
+            "address": "your-server.com",
+            "port": 443,
+            "users": [
+              {
+                "id": "your-uuid",
+                "alterId": 0,
+                "security": "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "wsSettings": {
+          "path": "/path"
+        }
+      }
+    }
+  ]
+}
+```
+
+配置完成后，代理将在以下端口可用：
+- SOCKS5: `127.0.0.1:10808`
+- HTTP: `127.0.0.1:10809`
+
+## 服务管理
+
+```bash
+# 安装服务
+sudo netmie service install
+
+# 启动服务
+sudo netmie service start
+
+# 停止服务
+sudo netmie service stop
+
+# 卸载服务
+sudo netmie service uninstall
+
+# 查看服务状态
+sudo systemctl status netbird
+```
+
+## 开发相关
+
+### 构建
+
+```bash
+# 构建客户端
+go build -o ./netmie ./client
+
+# 构建并重启 daemon（开发时使用）
+./restart-daemon.sh
+```
+
+### 清理环境
+
+```bash
+# 清理所有进程和残留文件
+./cleanup.sh
+```
+
+### 目录结构
+
+```
+netmie/
+├── client/                    # 客户端代码
+│   ├── cmd/                   # CLI 命令
+│   │   ├── up.go             # NetBird 连接
+│   │   ├── down.go           # NetBird 断开
+│   │   ├── status.go         # NetBird 状态
+│   │   ├── vup.go            # V2Ray 启动
+│   │   ├── vdown.go          # V2Ray 停止
+│   │   ├── vstatus.go        # V2Ray 状态
+│   │   └── vconfig.go        # V2Ray 配置更新
+│   ├── internal/
+│   │   └── v2ray/            # V2Ray 模块
+│   │       ├── engine.go     # V2Ray 引擎
+│   │       ├── config.go     # 配置管理
+│   │       └── xray_wrapper.go # v2ray-core 封装
+│   ├── proto/                # gRPC 协议定义
+│   └── server/               # Daemon 服务器
+├── management/               # 管理服务（未修改）
+└── release_files/           # 发布相关文件
+```
+
+## 技术架构
+
+### PC 端架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Netmie Daemon                           │
+│  ┌──────────────────┐         ┌──────────────────────────┐ │
+│  │ NetBird Module   │         │ V2Ray Module             │ │
+│  │ - wt0 interface  │         │ - v2ray-core             │ │
+│  │ - WireGuard      │         │ - Local Proxy            │ │
+│  │ - Route Table 1  │         │ - SOCKS5/HTTP            │ │
+│  └──────────────────┘         └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                    ↑
+                    │ gRPC (Unix Socket)
+                    │
+            ┌───────┴────────┐
+            │  Netmie CLI    │
+            └────────────────┘
+```
+
+### 通信方式
+
+- **CLI ↔ Daemon**: gRPC over Unix Socket (`/var/run/netbird.sock`)
+- **Daemon 权限**: Root 权限运行，可以读取任意路径的配置文件
+- **配置管理**: CLI 发送绝对路径，Daemon 读取并验证配置
+
+## 常见问题
+
+### 1. Daemon 无法启动
+
+```bash
+# 检查 daemon 状态
+sudo systemctl status netbird
+
+# 查看日志
+sudo journalctl -u netbird -f
+
+# 重启 daemon
+sudo systemctl restart netbird
+```
+
+### 2. V2Ray 启动失败
+
+```bash
+# 检查配置文件格式
+cat ~/.netmie/v2ray-config.json | jq .
+
+# 检查端口占用
+netstat -tlnp | grep 10808
+
+# 查看详细错误
+netmie vstatus
+```
+
+### 3. 端口已被占用
+
+```bash
+# 查找占用端口的进程
+sudo lsof -i :10808
+
+# 停止 V2Ray
+netmie vdown
+
+# 或清理所有相关进程
+./cleanup.sh
+```
+
+### 4. 配置更新不生效
+
+```bash
+# 重新配置
+netmie vconfig /path/to/new-config.json
+
+# 如果 V2Ray 正在运行，vconfig 会自动重启
+# 如果未运行，需要手动启动
+netmie vup
+```
+
+## 与 NetBird 的区别
+
+Netmie 是 NetBird 的增强版本，主要变更：
+
+1. **项目改名**: `netbird` → `netmie`
+2. **新增 V2Ray 支持**: 集成 v2ray-core v5
+3. **新增命令**: `vup`, `vdown`, `vstatus`, `vconfig`
+4. **配置目录**: `~/.netmie/` (存储 V2Ray 配置)
+5. **保持兼容**: 所有原有 NetBird 功能完全保留
+
+## 依赖
+
+- Go 1.25+
+- v2ray-core v5.46.0
+- Linux: iproute2, iptables/nftables
+- macOS/Windows: 无额外依赖
+
+## 许可证
+
+基于 NetBird 项目，遵循 BSD-3-Clause 许可证。
+
+## 致谢
+
+本项目基于 [NetBird](https://github.com/netbirdio/netbird) 开发，感谢 NetBird 团队的优秀工作。
