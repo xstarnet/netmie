@@ -23,22 +23,22 @@ type Inbound struct {
 	Protocol string                 `json:"protocol"`
 	Port     int                    `json:"port,omitempty"`
 	Listen   string                 `json:"listen,omitempty"`
-	Settings map[string]interface{} `json:"settings,omitempty"`
+	Settings json.RawMessage        `json:"settings,omitempty"`
 }
 
 type Outbound struct {
 	Tag            string                 `json:"tag,omitempty"`
 	Protocol       string                 `json:"protocol"`
-	Settings       map[string]interface{} `json:"settings,omitempty"`
+	Settings       json.RawMessage        `json:"settings,omitempty"`
 	StreamSettings *StreamSettings        `json:"streamSettings,omitempty"`
 }
 
 type StreamSettings struct {
 	Network  string                 `json:"network,omitempty"`
 	Security string                 `json:"security,omitempty"`
-	TLS      map[string]interface{} `json:"tlsSettings,omitempty"`
-	TCP      map[string]interface{} `json:"tcpSettings,omitempty"`
-	WS       map[string]interface{} `json:"wsSettings,omitempty"`
+	TLS      json.RawMessage        `json:"tlsSettings,omitempty"`
+	TCP      json.RawMessage        `json:"tcpSettings,omitempty"`
+	WS       json.RawMessage        `json:"wsSettings,omitempty"`
 }
 
 type Routing struct {

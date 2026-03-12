@@ -19,6 +19,7 @@ The project is written in Go and uses gRPC for CLI-to-daemon communication.
 go build -o ./netmie ./client
 
 # Install and restart daemon (development)
+# This script now automatically stops and removes existing service before reinstalling
 ./dev-install.sh
 ```
 
@@ -83,7 +84,7 @@ V2Ray Engine / NetBird Engine
 - `vup.go` - Start V2Ray proxy
 - `vdown.go` - Stop V2Ray proxy
 - `vstatus.go` - Check V2Ray status
-- `vconfig.go` - Update V2Ray configuration (not yet implemented in cmd, but proto exists)
+- `vconfig.go` - Download and decrypt V2Ray configuration from HTTP endpoint
 - `up.go`, `down.go`, `status.go` - NetBird equivalents
 - `root.go` - Root command setup and gRPC connection utilities
 
@@ -116,10 +117,11 @@ Protocol definitions are in `client/proto/daemon.proto`.
 ## Configuration
 
 ### V2Ray Configuration
-- Default path: `~/.netmie/v2ray-config.json`
+- Default path: `~/.netmie/v2ray-config.json` (user mode) or `/etc/netmie/v2ray-config.json` (daemon mode)
 - Format: Standard V2Ray JSON configuration
-- Supports inbounds (SOCKS5, HTTP) and outbounds (VMess, VLESS, etc.)
+- Supports inbounds (HTTP) and outbounds (VMess, VLESS, etc.)
 - Configuration is loaded by daemon and validated before starting
+- Daemon logs to `/var/log/netbird/client.log`
 
 ### Daemon Socket
 - Unix socket path: `/var/run/netbird.sock`
@@ -131,20 +133,31 @@ Protocol definitions are in `client/proto/daemon.proto`.
 ### V2Ray Lifecycle
 1. CLI sends `VUp` RPC to daemon
 2. Daemon acquires `v2rayMutex` lock
-3. Daemon loads config from `~/.netmie/v2ray-config.json`
+3. Daemon loads config from `/etc/netmie/v2ray-config.json` (or `~/.netmie/v2ray-config.json` in user mode)
 4. Daemon creates and starts V2Ray engine
 5. Engine wraps v2ray-core and manages lifecycle
 
 ### Configuration Updates
-- `VConfig` RPC accepts absolute file path
+- `VConfig` RPC accepts absolute file path to temporary config
 - Daemon reads and validates the configuration
+- Daemon writes validated config to `/etc/netmie/v2ray-config.json`
 - If V2Ray is running, it's restarted with new config
 - Config version is tracked for status reporting
+
+### Configuration Structure
+- Use `json.RawMessage` for `Settings`, `TLS`, `TCP`, `WS` fields in config structs
+- This preserves exact JSON structure when marshaling/unmarshaling
+- Prevents type conversion issues when passing config to v2ray-core
+- See `client/internal/v2ray/config.go` for struct definitions
 
 ### Error Handling
 - Daemon returns gRPC errors with descriptive messages
 - CLI displays user-friendly error messages
-- Check daemon logs via `journalctl -u netbird -f` on Linux
+- Daemon logs to `/var/log/netbird/client.log` (not journalctl)
+- Common errors:
+  - "cannot unmarshal string into...port" - Port type mismatch, fixed in `mergeInbounds()`
+  - "failed to load v2ray config" - Invalid JSON or v2ray-core compatibility issue
+  - "config file not found" - Check `/etc/netmie/v2ray-config.json` exists
 
 ## Testing Patterns
 
@@ -200,11 +213,12 @@ netmie vconfig https://config-server.com/v2ray-config
 ```
 
 **How it works:**
-1. CLI downloads encrypted config from HTTP URL
+1. CLI downloads encrypted config from HTTP URL (expects JSON response with `{code: 20000, data: {data: "base64", encrypted: true}}`)
 2. Decrypts using embedded AES-256 key (from `encryption_key.txt`)
-3. Validates JSON format
-4. Sends to daemon via gRPC for processing
-5. Daemon stores and applies config
+3. Merges server-provided outbounds with client-generated inbounds (HTTP proxy on specified port)
+4. **Important:** Fixes port type conversion - server may return port as string, client converts to int
+5. Sends merged config to daemon via gRPC
+6. Daemon validates and stores config at `/etc/netmie/v2ray-config.json`
 
 **Security notes:**
 - Encryption key is embedded in binary at compile time (base64-encoded)
@@ -214,19 +228,52 @@ netmie vconfig https://config-server.com/v2ray-config
 - Each encryption uses random nonce (no two ciphertexts are identical)
 - If key is compromised, regenerate key, rebuild binary, and redeploy
 
+**Server response format:**
+The server must return JSON in this format:
+```json
+{
+  "code": 20000,
+  "data": {
+    "data": "base64-encoded-encrypted-config",
+    "encrypted": true
+  }
+}
+```
+
+The decrypted config should contain outbounds with VMess/VLESS servers. Example entry format:
+```json
+{
+  "ps": "server-name",
+  "port": "17893",  // Can be string or int, client will convert
+  "id": "uuid",
+  "aid": 0,
+  "net": "tcp",
+  "type": "none",
+  "tls": "none",
+  "add": "server-ip"
+}
+```
+
+**Common issues:**
+- Port type mismatch: If v2ray-core reports "cannot unmarshal string into...port of type uint16", the server is returning port as string. The `mergeInbounds()` function in `vconfig.go` handles this conversion automatically.
+- Config structure: Use `json.RawMessage` for nested settings to preserve exact JSON structure when passing to v2ray-core.
+
 ### Debugging V2Ray Issues
 ```bash
 # Check daemon status
 sudo systemctl status netbird
 
-# View daemon logs
-sudo journalctl -u netbird -f
+# View daemon logs (daemon logs to file, not journalctl)
+sudo tail -f /var/log/netbird/client.log
+
+# Filter V2Ray-related logs
+sudo grep -i v2ray /var/log/netbird/client.log
 
 # Check V2Ray status via CLI
 netmie vstatus
 
 # Verify configuration
-cat ~/.netmie/v2ray-config.json | jq .
+cat /etc/netmie/v2ray-config.json
 
 # Check port availability
 netstat -tlnp | grep 10808

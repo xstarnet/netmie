@@ -12,6 +12,14 @@ fi
 echo "Building Netmie..."
 go build -o ./netmie ./client
 
+echo "Stopping existing service if running..."
+${SUDO} systemctl stop netbird 2>/dev/null || true
+
+echo "Removing existing service if installed..."
+${SUDO} systemctl disable netbird 2>/dev/null || true
+${SUDO} rm -f /etc/systemd/system/netbird.service
+${SUDO} systemctl daemon-reload
+
 echo "Installing Netmie binary..."
 ${SUDO} cp ./netmie /usr/local/bin/netmie
 ${SUDO} chmod +x /usr/local/bin/netmie

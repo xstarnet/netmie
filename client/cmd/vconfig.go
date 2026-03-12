@@ -160,21 +160,38 @@ func mergeInbounds(serverConfig []byte, host string, port int) ([]byte, error) {
 		return nil, fmt.Errorf("invalid server config JSON: %w", err)
 	}
 
+	// Fix port fields in outbounds (convert string to int if needed)
+	if outbounds, ok := config["outbounds"].([]interface{}); ok {
+		for _, outbound := range outbounds {
+			if ob, ok := outbound.(map[string]interface{}); ok {
+				if settings, ok := ob["settings"].(map[string]interface{}); ok {
+					if vnext, ok := settings["vnext"].([]interface{}); ok {
+						for _, v := range vnext {
+							if server, ok := v.(map[string]interface{}); ok {
+								// Convert port from string to int if it's a string
+								if portVal, exists := server["port"]; exists {
+									switch p := portVal.(type) {
+									case string:
+										var portNum int
+										fmt.Sscanf(p, "%d", &portNum)
+										server["port"] = portNum
+									case float64:
+										server["port"] = int(p)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Add inbounds configuration
 	config["inbounds"] = []map[string]interface{}{
 		{
 			"listen":   host,
 			"port":     port,
-			"protocol": "socks",
-			"settings": map[string]interface{}{
-				"auth": "noauth",
-				"udp":  true,
-			},
-			"tag": "socks-in",
-		},
-		{
-			"listen":   host,
-			"port":     port + 1,
 			"protocol": "http",
 			"tag":      "http-in",
 		},
