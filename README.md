@@ -11,6 +11,39 @@ Netmie 是基于 NetBird 的 P2P VPN 解决方案，集成了 V2Ray 代理功能
 
 ## 快速开始
 
+### 一键安装（推荐）
+
+```bash
+# 下载并运行安装脚本
+curl -fsSL https://www.miemie.tech/netmie/release/install.sh | bash
+```
+
+或使用 wget：
+
+```bash
+wget -qO- https://www.miemie.tech/netmie/release/install.sh | bash
+```
+
+安装脚本会自动：
+
+1. 检测操作系统和架构（Linux/macOS/FreeBSD，amd64/arm64/arm 等）
+2. 下载对应版本的二进制文件
+3. 安装到 `/usr/local/bin/netmie`
+4. 安装并启动系统服务
+
+### 安装选项
+
+```bash
+# 使用自定义下载地址
+./install.sh -u https://your-domain.com/releases
+
+# 只安装二进制文件，不安装服务
+./install.sh --no-service
+
+# 安装到指定目录
+./install.sh -d /usr/bin
+```
+
 ### 开发环境安装
 
 ```bash
@@ -107,13 +140,14 @@ netmie vdown
 ```
 
 配置完成后，代理将在以下端口可用：
+
 - SOCKS5: `127.0.0.1:10808`
 - HTTP: `127.0.0.1:10809`
 
 ## 服务管理
 
 ```bash
-# 安装服务
+# 安装服务（会自动配置开机自启）
 sudo netmie service install
 
 # 启动服务
@@ -126,7 +160,34 @@ sudo netmie service stop
 sudo netmie service uninstall
 
 # 查看服务状态
+netmie service status
+
+# 或使用 systemctl（Linux）
 sudo systemctl status netbird
+```
+
+> **注意**: `netmie service install` 会自动配置系统服务开机自启，重启后服务会自动启动。
+
+### Linux 系统服务管理
+
+```bash
+# 查看服务状态
+sudo systemctl status netbird
+
+# 查看是否开机自启
+sudo systemctl is-enabled netbird
+
+# 设置开机自启
+sudo systemctl enable netbird
+
+# 取消开机自启
+sudo systemctl disable netbird
+
+# 查看服务日志
+sudo journalctl -u netbird -f
+
+# 查看服务配置文件
+sudo systemctl cat netbird
 ```
 
 ## 开发相关

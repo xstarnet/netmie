@@ -29,6 +29,7 @@ client/.distfiles/
 infrastructure_files/setup.env
 infrastructure_files/setup-*.env
 .vscode
+.claude
 .DS_Store
 vendor/
 /netbird
@@ -39,3 +40,8 @@ client/netbird-electron/
 
 # V2Ray data files
 *.dat
+
+# V2Ray config encryption key (not committed to git)
+client/cmd/encryption_key.txt
+
+NetmieSDK.xcframework
